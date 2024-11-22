@@ -57,7 +57,6 @@ def get_exchange_rate(to_currency):
         response.raise_for_status()  # Raise an error if the response status is not 200 (OK)
         data = response.json()
         rate = data.get("data").get("rates").get(to_currency)
-        print(rate)
         if rate is not None:
             return rate
         else:
@@ -114,9 +113,9 @@ async def on_ready():
     # Notify when the bot has connected to Discord
     print(f'{bot.user.name} has connected to Discord!')
 
-@bot.command(name='gold', help='Get the current gold spot price. With the optional arguments, this function can be used as a spot calculator.  For example, !gold 1350 .5 would tell you the premium of a 1/2 oz compared to current spot price. You can also specify a currency, e.g., !gold CAD or !gold 1350 .5 CAD.')
+@bot.command(name='gold', help='Get the current gold spot price. With the optional arguments, this function can be used to get spot prices in another currency, e.g. !spot CAD.  Also, as a spot calculator.  For example, !gold 1350 .5 would tell you the premium of a 1/2 oz compared to current spot price. You can also specify a currency, e.g. !gold 2000 .5 CAD')
 async def gold(ctx, 
-               param1: float = commands.parameter(default=None, description="The price you're checking"), 
+               param1: str = commands.parameter(default=None, description="The price you're checking"), #param1 is listed as a str because of the use case of !gold CAD which we have to check for
                param2: float = commands.parameter(default=None, description="The weight you're checking in decimal format. ex: 1/10th would be .1"),
                param3: str = commands.parameter(default="USD", description="The currency code. ex: USD, CAD")):
     # Retrieve the current gold price data
@@ -130,7 +129,14 @@ async def gold(ctx,
         await ctx.send(f"Error fetching gold price: {price_data['error']}")
         return
 
+    
     currency_code = param3.upper()
+
+    # there is a use case where the person just writes !gold CAD to retrieve spot prices in another currency
+    # therefore, were have to check if the first param is alphabetic. If so, we will set currencycode to param1
+    # so that it can be used later in the "else" case where format_spot_price_message is called
+    if param1 is not None and param1.isalpha():
+        currency_code = param1
 
     # If both parameters (price and weight) are provided, calculate the spot difference
     if param1 is not None and param2 is not None:
@@ -141,7 +147,7 @@ async def gold(ctx,
             return
         # Convert the gold bid price to the specified currency
         gold_bid_converted = price_data['gold_bid'] * rate
-        result = calculate_spot_difference(param1, param2, gold_bid_converted)
+        result = calculate_spot_difference(float(param1), param2, gold_bid_converted)
         await ctx.send(
             f'{TITLE_TEXT}'
             f'**{param2}oz** @ **{param1} {currency_code}** '
