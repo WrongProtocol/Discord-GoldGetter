@@ -80,7 +80,9 @@ async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
 
 @bot.command(name='gold', help='Get the current gold spot price. With the optional arguments, this function can be used as a spot calculator.  For example, !gold 1350 .5 would tell you the premium of a 1/2 oz compared to current spot price.')
-async def gold(ctx, param1: float = commands.parameter(default=None, description="The price you're checking"), param2: float = commands.parameter(default=None, description="The weight you're checking in decimal format. ex: 1/10th would be .1")):
+async def gold(ctx, 
+               param1: float = commands.parameter(default=None, description="The price you're checking"), 
+               param2: float = commands.parameter(default=None, description="The weight you're checking in decimal format. ex: 1/10th would be .1")):
     price_data = get_gold_price()
 
     if price_data is None:
