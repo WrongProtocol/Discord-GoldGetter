@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 GOLD_LOOKUP_URL = os.getenv('GOLD_LOOKUP_URL')
+EXCHANGE_RATE_API_URL = "https://free.ratesdb.com/v1/rates?from=USD&to={}" # URL for currency conversion
 
 # Set up intents for the bot
 intents = discord.Intents.default()
@@ -49,6 +50,22 @@ def get_gold_price():
         # Return an error message if there is an issue with the request
         return {"error": str(e)}
 
+# Function to get the exchange rate for the specified currency
+def get_exchange_rate(to_currency):
+    try:
+        response = requests.get(EXCHANGE_RATE_API_URL.format(to_currency))
+        response.raise_for_status()  # Raise an error if the response status is not 200 (OK)
+        data = response.json()
+        rate = data.get("data").get("rates").get(to_currency)
+        print(rate)
+        if rate is not None:
+            return rate
+        else:
+            return None
+    except requests.RequestException as e:
+        print(e)
+        return None
+
 # Function to calculate spot price difference
 def calculate_spot_difference(price_query, weight, gold_bid):
     # Calculate the weighted price based on gold bid and weight provided by user
@@ -75,15 +92,20 @@ def calculate_spot_difference(price_query, weight, gold_bid):
     }
 
 # Function to format the spot price information for sending to the user
-def format_spot_price_message(price_data):
-    # Round the gold bid and change values for easier readability
-    gBid = round(price_data['gold_bid'], 2)
-    gChange = round(price_data['gold_change'], 2)
-    # Return a formatted string with the gold price details
+def format_spot_price_message(price_data, currency_code="USD"):
+    # Get the conversion rate if a currency other than USD is specified
+    rate = 1 if currency_code == "USD" else get_exchange_rate(currency_code)
+    if rate is None:
+        return f"Error: Could not retrieve exchange rate for {currency_code}."
+
+    # Convert the gold price to the specified currency
+    gBid = round(price_data['gold_bid'] * rate, 2)
+    gChange = round(price_data['gold_change'] * rate, 2)
+    # Return a formatted string with the gold price details in the specified currency
     return (
         f"{TITLE_TEXT}"
-        f"Gold Bid: ${gBid}\n"
-        f"Gold Change: ${gChange}\n"
+        f"Gold Bid: {gBid} {currency_code}\n"
+        f"Gold Change: {gChange} {currency_code}\n"
         f"Gold Change Percent: {price_data['gold_change_percent']}%"
     )
 
@@ -92,10 +114,11 @@ async def on_ready():
     # Notify when the bot has connected to Discord
     print(f'{bot.user.name} has connected to Discord!')
 
-@bot.command(name='gold', help='Get the current gold spot price. With the optional arguments, this function can be used as a spot calculator.  For example, !gold 1350 .5 would tell you the premium of a 1/2 oz compared to current spot price.')
+@bot.command(name='gold', help='Get the current gold spot price. With the optional arguments, this function can be used as a spot calculator.  For example, !gold 1350 .5 would tell you the premium of a 1/2 oz compared to current spot price. You can also specify a currency, e.g., !gold CAD or !gold 1350 .5 CAD.')
 async def gold(ctx, 
                param1: float = commands.parameter(default=None, description="The price you're checking"), 
-               param2: float = commands.parameter(default=None, description="The weight you're checking in decimal format. ex: 1/10th would be .1")):
+               param2: float = commands.parameter(default=None, description="The weight you're checking in decimal format. ex: 1/10th would be .1"),
+               param3: str = commands.parameter(default="USD", description="The currency code. ex: USD, CAD")):
     # Retrieve the current gold price data
     price_data = get_gold_price()
 
@@ -107,18 +130,27 @@ async def gold(ctx,
         await ctx.send(f"Error fetching gold price: {price_data['error']}")
         return
 
+    currency_code = param3.upper()
+
     # If both parameters (price and weight) are provided, calculate the spot difference
     if param1 is not None and param2 is not None:
-        result = calculate_spot_difference(param1, param2, price_data['gold_bid'])
+        # Get the conversion rate for the specified currency
+        rate = 1 if currency_code == "USD" else get_exchange_rate(currency_code)
+        if rate is None:
+            await ctx.send(f"Error: Could not retrieve exchange rate for {currency_code}. Please try again later.")
+            return
+        # Convert the gold bid price to the specified currency
+        gold_bid_converted = price_data['gold_bid'] * rate
+        result = calculate_spot_difference(param1, param2, gold_bid_converted)
         await ctx.send(
             f'{TITLE_TEXT}'
-            f'**{param2}oz** @ **${param1}** '
-            f'is **${result["price_diff"]} {result["above_or_below"]}** the spot of ${result["weighted_price"]} for {param2}oz\n'
+            f'**{param2}oz** @ **{param1} {currency_code}** '
+            f'is **{result["price_diff"]} {currency_code} {result["above_or_below"]}** the spot of {result["weighted_price"]} {currency_code} for {param2}oz\n'
             f'**{result["percent_over"]}% {result["over_or_under"]}**'
         )
     else:
         # If no parameters are provided, just send the current spot price
-        await ctx.send(format_spot_price_message(price_data))
+        await ctx.send(format_spot_price_message(price_data, currency_code))
 
 # Run the bot with the provided Discord token
 bot.run(DISCORD_TOKEN)
