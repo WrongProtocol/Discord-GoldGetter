@@ -16,7 +16,7 @@ intents.message_content = True
 
 # Set up the bot with a command prefix of '!' and specify the intents
 bot = commands.Bot(command_prefix='!', intents=intents)
-TITLE_TEXT = "Carmine's Gold Getter with data from Summit Metals\n"
+TITLE_TEXT = "*Carmine's Gold Getter with data from Summit Metals*\n"
 
 # Function to get the gold price
 def get_gold_price():
@@ -102,10 +102,10 @@ def format_spot_price_message(price_data, currency_code="USD"):
     gChange = round(price_data['gold_change'] * rate, 2)
     # Return a formatted string with the gold price details in the specified currency
     return (
-        f"{TITLE_TEXT}"
         f"Gold Bid: {gBid} {currency_code}\n"
         f"Gold Change: {gChange} {currency_code}\n"
-        f"Gold Change Percent: {price_data['gold_change_percent']}%"
+        f"Gold Change Percent (%usd): {price_data['gold_change_percent']}%\n"
+        f"{TITLE_TEXT}"
     )
 
 @bot.event
@@ -132,7 +132,7 @@ async def gold(ctx,
     
     currency_code = param3.upper()
 
-    # there is a use case where the person just writes !gold CAD to retrieve spot prices in another currency
+    # there is a use case where the person just writes "!gold CAD" to retrieve spot prices in another currency
     # therefore, were have to check if the first param is alphabetic. If so, we will set currencycode to param1
     # so that it can be used later in the "else" case where format_spot_price_message is called
     if param1 is not None and param1.isalpha():
@@ -149,10 +149,10 @@ async def gold(ctx,
         gold_bid_converted = price_data['gold_bid'] * rate
         result = calculate_spot_difference(float(param1), param2, gold_bid_converted)
         await ctx.send(
-            f'{TITLE_TEXT}'
             f'**{param2}oz** @ **{param1} {currency_code}** '
             f'is **{result["price_diff"]} {currency_code} {result["above_or_below"]}** the spot of {result["weighted_price"]} {currency_code} for {param2}oz\n'
-            f'**{result["percent_over"]}% {result["over_or_under"]}**'
+            f'**{result["percent_over"]}% {result["over_or_under"]}**\n'
+            f"{TITLE_TEXT}"
         )
     else:
         # If no parameters are provided, just send the current spot price
