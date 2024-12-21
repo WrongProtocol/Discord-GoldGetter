@@ -16,7 +16,7 @@ intents.message_content = True
 
 # Set up the bot with a command prefix of '!' and specify the intents
 bot = commands.Bot(command_prefix='!', intents=intents)
-TITLE_TEXT = "*Carmine's Gold Getter with data from Summit Metals*\n"
+TITLE_TEXT = "*data from Summit Metals*\n"
 
 # Function to get the gold price
 def get_gold_price():
