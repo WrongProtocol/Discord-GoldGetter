@@ -7,7 +7,24 @@ there's an unpublished .env file that sets the DISCORD_TOKEN as well as the GOLD
 so 
 **you will have to fill those in with your own token / url**
 
+**Usage:**
+Get the spot price of gold
+**!gold**
+
+Can also convert to other currencies
+**!gold CAD** 
+
+Also functions as a spot calculator to check how much over/under an ask is based on the specified weight. 
+
+!gold <price> <weight> [<currency>] 
+
+ex: **!gold 2800 1**
+ex: **!gold 1400 .5** 
+ex: **!gold 300 .1 CAD**
+
 Enjoy
 
 Thanks,
 WrongProtocol
+
+this was written for the 2is1 discord channel, find me on there as @Carmine
