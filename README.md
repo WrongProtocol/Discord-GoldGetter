@@ -12,9 +12,9 @@ Get the spot price of gold:
 ```
 !gold
 ```
-Can also convert to other currencies:  
+Get the spot price of fractional gold
 ```
-!gold CAD
+!gold .5
 ```
 Also functions as a spot calculator to check how much over/under an ask is based on the specified weight. 
 
@@ -22,9 +22,15 @@ Also functions as a spot calculator to check how much over/under an ask is based
 !gold 2800 1
 
 !gold 1400 .5
-
-!gold 300 .1 CAD
 ```
+Any of the commands above can be converted to different currencies by adding the 3-letter currency code as the last parameter
+```
+!gold CAD
+!gold .5 CAD
+!gold 1600 .5 CAD
+```
+
+People keep typing !spot, but I chose not to support that because it doesn't specify which metal. This bot should be able to support other metals in the future with little legwork. 
 
 Enjoy
 
