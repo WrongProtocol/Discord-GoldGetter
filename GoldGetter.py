@@ -32,14 +32,14 @@ def get_gold_price():
         data = response.json()
 
         # Extract necessary gold price data from the response
-        gold_bid = data.get("goldBid")
+        gold_ask = data.get("goldAsk")
         gold_change = data.get("goldChange")
         gold_change_percent = data.get("goldChangePercent")
 
         # Return the gold price data if all values are present
-        if gold_bid is not None and gold_change is not None and gold_change_percent is not None:
+        if gold_ask is not None and gold_change is not None and gold_change_percent is not None:
             return {
-                "gold_bid": gold_bid,
+                "gold_ask": gold_ask,
                 "gold_change": gold_change,
                 "gold_change_percent": gold_change_percent
             }
@@ -75,9 +75,9 @@ def get_exchange_rate(to_currency):
         return None
 
 # Function to calculate spot price difference
-def calculate_spot_difference(price_query, weight, gold_bid):
-    # Calculate the weighted price based on gold bid and weight provided by user
-    weighted_price = round(gold_bid * weight, 2)
+def calculate_spot_difference(price_query, weight, gold_ask):
+    # Calculate the weighted price based on gold ask and weight provided by user
+    weighted_price = round(gold_ask * weight, 2)
     # Calculate the difference between user's price and the weighted spot price
     price_diff = round(price_query - weighted_price, 2)
     # Calculate the percentage over or under the spot price
@@ -107,11 +107,11 @@ def format_spot_price_message(price_data, currency_code="USD"):
         return f"Error: Could not retrieve exchange rate for {currency_code}."
 
     # Convert the gold price to the specified currency
-    gBid = round(price_data['gold_bid'] * rate, 2)
+    gAsk = round(price_data['gold_ask'] * rate, 2)
     gChange = round(price_data['gold_change'] * rate, 2)
     # Return a formatted string with the gold price details in the specified currency
     return (
-        f"Gold Bid: {gBid} {currency_code}\n"
+        f"Gold Ask: {gAsk} {currency_code}\n"
         f"Gold Change: {gChange} {currency_code}\n"
     #    f"Gold Change Percent (%usd): {price_data['gold_change_percent']}%\n"
         f"{SUB_TEXT}"
@@ -172,10 +172,10 @@ async def gold(ctx,
         convRate = 1 if thecurrencycode == "USD" else get_exchange_rate(thecurrencycode)
 
         # convert to specified currency , and apply fractional weight
-        priceout = round((price_data['gold_bid'] * convRate) * theweight, 2)
+        priceout = round((price_data['gold_ask'] * convRate) * theweight, 2)
 
         await ctx.send(
-            f'**{theweight}oz** bid is at **{priceout} {thecurrencycode}**\n'
+            f'**{theweight}oz** ask is at **{priceout} {thecurrencycode}**\n'
             f"{SUB_TEXT}"
         )
         return
@@ -191,9 +191,9 @@ async def gold(ctx,
         if rate is None:
             await ctx.send(f"Error: Could not retrieve exchange rate for {currency_code}. Please try again later.")
             return
-        # Convert the gold bid price to the specified currency
-        gold_bid_converted = price_data['gold_bid'] * rate
-        result = calculate_spot_difference(float(param1), float(param2), gold_bid_converted)
+        # Convert the gold ask price to the specified currency
+        gold_ask_converted = price_data['gold_ask'] * rate
+        result = calculate_spot_difference(float(param1), float(param2), gold_ask_converted)
         await ctx.send(
             f'**{param2}oz** @ **{param1} {currency_code}** '
             f'is **{result["price_diff"]} {currency_code} {result["above_or_below"]}** the spot of {result["weighted_price"]} {currency_code} for {param2}oz\n'
