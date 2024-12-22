@@ -104,7 +104,7 @@ def format_spot_price_message(price_data, currency_code="USD"):
     return (
         f"Gold Bid: {gBid} {currency_code}\n"
         f"Gold Change: {gChange} {currency_code}\n"
-        f"Gold Change Percent (%usd): {price_data['gold_change_percent']}%\n"
+    #    f"Gold Change Percent (%usd): {price_data['gold_change_percent']}%\n"
         f"{TITLE_TEXT}"
     )
 
