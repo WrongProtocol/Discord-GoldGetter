@@ -19,7 +19,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 SUB_TEXT = "*data from Summit Metals*\n"
 
 # Function to get the gold price
-def get_gold_price():
+def get_metal_prices():
     # Set headers to mimic a browser request to avoid getting blocked
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
@@ -35,13 +35,21 @@ def get_gold_price():
         gold_ask = data.get("goldAsk")
         gold_change = data.get("goldChange")
         gold_change_percent = data.get("goldChangePercent")
+        silver_ask = data.get("silverAsk")
+        silver_change = data.get("silverChange")
+        silver_change_percent = data.get("silverChangePercent")
 
         # Return the gold price data if all values are present
-        if gold_ask is not None and gold_change is not None and gold_change_percent is not None:
+        # note we assume that if we got a gold_ask, we'll have the rest of the parameters as well, though
+        # this could be a false presumpion in the case that the API changes.
+        if gold_ask is not None :
             return {
                 "gold_ask": gold_ask,
                 "gold_change": gold_change,
-                "gold_change_percent": gold_change_percent
+                "gold_change_percent": gold_change_percent,
+                "silver_ask": silver_ask,
+                "silver_change": silver_change,
+                "silver_change_percent": silver_change_percent
             }
         else:
             return None
@@ -124,7 +132,20 @@ async def on_ready():
 
 @bot.command(name='spot', help='use !gold at this time')
 async def spot(ctx):
-    await ctx.send("Use **!gold** to get the spot price of gold. ")
+    # Retrieve the current gold price data
+    price_data = get_metal_prices()
+    gAsk = round(price_data['gold_ask'], 2)
+    gChange = round(price_data['gold_change'], 2)
+    sAsk = round(price_data['silver_ask'], 2)
+    sChange = round(price_data['silver_change'], 2)
+
+    await ctx.send(
+                   f'Gold: **{gAsk}** USD\n'
+                   f'Gold Change: {gChange} \n'
+                   f'Silver: **{sAsk}** USD\n'
+                   f'Silver Change: {sChange}\n'
+                   'Use **!gold** to perform more gold-specific lookups such as fractional and premium calculations. !help gold for more information.\n'
+                   f"{SUB_TEXT}")
 
 @bot.command(name='gold', help='!gold gets spot price. !gold .5 would tell you the spot price for a half oz.  !gold 1350 .5 would calculate how much over/under that price is for .5oz. You can also specify a currency as the last parameter of any of these commands, e.g. !gold CAD,   !gold .5 CAD    or  !gold 2000 .5 CAD')
 async def gold(ctx, 
@@ -139,7 +160,7 @@ async def gold(ctx,
     print("p1 ", param1, ", p2 ", param2, ", p3 ", param3,  flush=True)
 
     # Retrieve the current gold price data
-    price_data = get_gold_price()
+    price_data = get_metal_prices()
 
     # Handle errors or missing data
     if price_data is None:
@@ -195,7 +216,7 @@ async def gold(ctx,
         gold_ask_converted = price_data['gold_ask'] * rate
         result = calculate_spot_difference(float(param1), float(param2), gold_ask_converted)
         await ctx.send(
-            f'**{param2}oz** @ **{param1} {currency_code}** '
+            f'{param2}oz @ {param1} {currency_code} '
             f'is **{result["price_diff"]} {currency_code} {result["above_or_below"]}** the spot of {result["weighted_price"]} {currency_code} for {param2}oz\n'
             f'**{result["percent_over"]}% {result["over_or_under"]}**\n'
             f"{SUB_TEXT}"
