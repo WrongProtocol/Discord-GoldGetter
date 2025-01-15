@@ -38,7 +38,9 @@ def get_metal_prices():
         silver_ask = data.get("silverAsk")
         silver_change = data.get("silverChange")
         silver_change_percent = data.get("silverChangePercent")
-
+        platinum_ask = data.get("platinumAsk")
+        platinum_change = data.get("platinumChange")
+        platinum_change_percent = data.get("platinumChangePercent")
         # Return the gold price data if all values are present
         # note we assume that if we got a gold_ask, we'll have the rest of the parameters as well, though
         # this could be a false presumpion in the case that the API changes.
@@ -49,7 +51,10 @@ def get_metal_prices():
                 "gold_change_percent": gold_change_percent,
                 "silver_ask": silver_ask,
                 "silver_change": silver_change,
-                "silver_change_percent": silver_change_percent
+                "silver_change_percent": silver_change_percent,
+                "platinum_ask": platinum_ask,
+                "platinum_change": platinum_change,
+                "platinum_change_percent": platinum_change_percent
             }
         else:
             return None
@@ -138,12 +143,15 @@ async def spot(ctx):
     gChange = round(price_data['gold_change'], 2)
     sAsk = round(price_data['silver_ask'], 2)
     sChange = round(price_data['silver_change'], 2)
-
+    pAsk = round(price_data['platinum_ask'], 2)
+    pChange = round(price_data['platinum_change'], 2)
     await ctx.send(
                    f'Gold: **{gAsk}** USD\n'
                    f'Gold Change: {gChange} \n'
                    f'Silver: **{sAsk}** USD\n'
                    f'Silver Change: {sChange}\n'
+                   f'Platinum: **{pAsk}** USD\n'
+                   f'Platinum Change: {pChange}\n'
                    'Use **!gold** to perform more gold-specific lookups such as fractional and premium calculations. !help gold for more information.\n'
                    f"{SUB_TEXT}")
 
