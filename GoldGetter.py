@@ -27,7 +27,7 @@ def get_metal_prices():
 
     try:
         # Send a GET request to the gold price lookup URL
-        response = requests.get(GOLD_LOOKUP_URL, headers=headers)
+        response = requests.get(GOLD_LOOKUP_URL, headers=headers, timeout=8)
         response.raise_for_status()  # Raise an error if the response status is not 200 (OK)
         data = response.json()
 
@@ -59,7 +59,7 @@ def get_metal_prices():
         else:
             return None
 
-    except requests.RequestException as e:
+    except (requests.RequestException, ValueError) as e:
         # Return an error message if there is an issue with the request
         return {"error": str(e)}
 
@@ -75,25 +75,37 @@ def is_float(string):
 # Function to get the exchange rate for the specified currency
 def get_exchange_rate(to_currency):
     try:
-        response = requests.get(EXCHANGE_RATE_API_URL.format(to_currency))
+        if not to_currency:
+            return None
+        code = to_currency.upper()
+        response = requests.get(EXCHANGE_RATE_API_URL.format(code), timeout=8)
         response.raise_for_status()  # Raise an error if the response status is not 200 (OK)
         data = response.json()
-        rate = data.get("data").get("rates").get(to_currency)
-        if rate is not None:
-            return rate
-        else:
-            return None
-    except requests.RequestException as e:
+        rate = None
+        if isinstance(data, dict):
+            inner = data.get("data")
+            if isinstance(inner, dict):
+                rates = inner.get("rates")
+                if isinstance(rates, dict):
+                    rate = rates.get(code)
+        return rate
+    except (requests.RequestException, ValueError) as e:
         print(e)
         return None
 
 # Function to calculate spot price difference
 def calculate_spot_difference(price_query, weight, gold_ask):
+    # Guard against zero or negative values that would cause division by zero or nonsense
+    if weight is None or weight <= 0:
+        return {"error": "Weight must be greater than zero."}
+    if gold_ask is None or gold_ask <= 0:
+        return {"error": "Gold ask must be greater than zero."}
+
     # Calculate the weighted price based on gold ask and weight provided by user
     weighted_price = round(gold_ask * weight, 2)
     # Calculate the difference between user's price and the weighted spot price
     price_diff = round(price_query - weighted_price, 2)
-    # Calculate the percentage over or under the spot price
+    # Calculate the percentage over or under the spot price, avoid division by zero (handled above)
     percent_over = round((price_diff / weighted_price) * 100, 2)
     # Determine if the user's price is above or below the spot price
     above_or_below = "above" if price_diff >= 0 else "BELOW"
@@ -139,6 +151,13 @@ async def on_ready():
 async def spot(ctx):
     # Retrieve the current gold price data
     price_data = get_metal_prices()
+    # Handle errors or missing data to prevent crashes
+    if price_data is None:
+        await ctx.send("Could not retrieve gold price information. Please try again later.")
+        return
+    if isinstance(price_data, dict) and "error" in price_data:
+        await ctx.send(f"Error fetching gold price: {price_data['error']}")
+        return
     gAsk = round(price_data['gold_ask'], 2)
     gChange = round(price_data['gold_change'], 2)
     sAsk = round(price_data['silver_ask'], 2)
@@ -179,26 +198,34 @@ async def gold(ctx,
         return
 
     
-    currency_code = param3.upper()
+    currency_code = param3.upper() if isinstance(param3, str) else "USD"
 
     # there is a use case where the person just writes "!gold CAD" to retrieve spot prices in another currency
     # therefore, were have to check if the first param is alphabetic. If so, we will set currencycode to param1
     # so that it can be used later in the "else" case where format_spot_price_message is called
-    if param1 is not None and param1.isalpha():
-        currency_code = param1
+    if param1 is not None and isinstance(param1, str) and param1.isalpha():
+        currency_code = param1.upper()
 
     # there is a case where someone writes something like "!gold .25" or "!gold .25 CAD"
     # where they want to see the current spot price for that fractional weight. 
     if param1 is not None and is_float(param1) and (param2 is None or (isinstance(param2, str) and not is_float(param2))):
 
         theweight = float(param1)
-        thecurrencycode = param2
+        thecurrencycode = param2.upper() if isinstance(param2, str) else None
 
         #if param2 is None (no currency defined), use USD
         if thecurrencycode is None: thecurrencycode = "USD"
 
+        # Validate weight
+        if theweight <= 0:
+            await ctx.send("Weight must be greater than zero.")
+            return
+
         # Get the conversion rate for the specified currency
         convRate = 1 if thecurrencycode == "USD" else get_exchange_rate(thecurrencycode)
+        if convRate is None:
+            await ctx.send(f"Error: Could not retrieve exchange rate for {thecurrencycode}.")
+            return
 
         # convert to specified currency , and apply fractional weight
         priceout = round((price_data['gold_ask'] * convRate) * theweight, 2)
@@ -222,7 +249,15 @@ async def gold(ctx,
             return
         # Convert the gold ask price to the specified currency
         gold_ask_converted = price_data['gold_ask'] * rate
-        result = calculate_spot_difference(float(param1), float(param2), gold_ask_converted)
+        # Validate weight
+        weight_val = float(param2)
+        if weight_val <= 0:
+            await ctx.send("Weight must be greater than zero.")
+            return
+        result = calculate_spot_difference(float(param1), weight_val, gold_ask_converted)
+        if isinstance(result, dict) and "error" in result:
+            await ctx.send(result["error"])
+            return
         await ctx.send(
             f'{param2}oz @ {param1} {currency_code} '
             f'is **{result["price_diff"]} {currency_code} {result["above_or_below"]}** the spot of {result["weighted_price"]} {currency_code} for {param2}oz\n'
