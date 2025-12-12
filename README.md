@@ -2,15 +2,22 @@ Hello! This is the GoldGetter bot for Discord.
 
 The purpose of this bot is to fetch the current gold price and be a "premium calculator" for the users of the 2is1 discord server about gold and precious metals. Find me on that server as @Carmine. This bot is made just for fun and to hopefully be helpful. It runs in a lightweight docker. 
 
-there's an unpublished .env file that sets the DISCORD_TOKEN as well as the GOLD_LOOKUP_URL
-so 
-**you will have to fill those in with your own token / url**
+Setup requires a `.env` file with:
+
+- `DISCORD_TOKEN`: Your bot token
+- `GOLD_LOOKUP_URL`: Endpoint returning spot data (see format below)
+
+Also ensure the Discord application has the Message Content Intent enabled.
 
 **Usage:**
 
 Get the spot price of gold: 
 ```
 !gold
+```
+Get quick spot across available metals (gold, silver, platinum when provided by your API):
+```
+!spot
 ```
 Get the spot price of fractional gold
 ```
@@ -30,7 +37,9 @@ Any of the commands above can be converted to different currencies by adding the
 !gold 1600 .5 CAD
 ```
 
-People keep typing !spot, but I chose not to support that because it doesn't specify which metal. This bot should be able to support other metals in the future with little legwork. 
+Notes
+- `!spot` reports metals present in your API response. Missing fields are skipped.
+- The bot uses an external FX API to convert from USD when a currency code is provided.
 
 Enjoy
 
@@ -45,5 +54,15 @@ note: if you choose to fork this, the code is expecting the GOLD_LOOKUP_URL to r
     "goldBid": 2617,
     "goldChange": 32.4,
     "goldChangePercent": 1.23,  
+}
+```
+
+Optional fields for additional metals (shown by `!spot` if present):
+```
+{
+    "silverAsk": 30.1,
+    "silverChange": -0.2,
+    "platinumAsk": 980.5,
+    "platinumChange": 5.7
 }
 ```

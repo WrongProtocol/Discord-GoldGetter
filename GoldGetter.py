@@ -1,6 +1,7 @@
 import discord
 import requests
 import os
+import sys
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -9,6 +10,16 @@ load_dotenv()
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 GOLD_LOOKUP_URL = os.getenv('GOLD_LOOKUP_URL')
 EXCHANGE_RATE_API_URL = "https://free.ratesdb.com/v1/rates?from=USD&to={}" # URL for currency conversion
+
+# Fail fast if required environment variables are missing
+missing_env = []
+if not DISCORD_TOKEN:
+    missing_env.append('DISCORD_TOKEN')
+if not GOLD_LOOKUP_URL:
+    missing_env.append('GOLD_LOOKUP_URL')
+if missing_env:
+    print(f"Missing required environment variable(s): {', '.join(missing_env)}", flush=True)
+    sys.exit(1)
 
 # Set up intents for the bot
 intents = discord.Intents.default()
@@ -158,21 +169,25 @@ async def spot(ctx):
     if isinstance(price_data, dict) and "error" in price_data:
         await ctx.send(f"Error fetching gold price: {price_data['error']}")
         return
-    gAsk = round(price_data['gold_ask'], 2)
-    gChange = round(price_data['gold_change'], 2)
-    sAsk = round(price_data['silver_ask'], 2)
-    sChange = round(price_data['silver_change'], 2)
-    pAsk = round(price_data['platinum_ask'], 2)
-    pChange = round(price_data['platinum_change'], 2)
-    await ctx.send(
-                   f'Gold: **{gAsk}** USD\n'
-                   f'Gold Change: {gChange} \n'
-                   f'Silver: **{sAsk}** USD\n'
-                   f'Silver Change: {sChange}\n'
-                   f'Platinum: **{pAsk}** USD\n'
-                   f'Platinum Change: {pChange}\n'
-                   'Use **!gold** to perform more gold-specific lookups such as fractional and premium calculations. !help gold for more information.\n'
-                   f"{SUB_TEXT}")
+    lines = []
+    # Build spot lines only for available metals
+    for metal, ask_key, change_key in (
+        ("Gold", "gold_ask", "gold_change"),
+        ("Silver", "silver_ask", "silver_change"),
+        ("Platinum", "platinum_ask", "platinum_change"),
+    ):
+        ask_val = price_data.get(ask_key) if isinstance(price_data, dict) else None
+        change_val = price_data.get(change_key) if isinstance(price_data, dict) else None
+        if isinstance(ask_val, (int, float)):
+            lines.append(f'{metal}: **{round(ask_val, 2)}** USD')
+            if isinstance(change_val, (int, float)):
+                lines.append(f'{metal} Change: {round(change_val, 2)}')
+    if not lines:
+        await ctx.send("Spot data unavailable at this time.")
+        return
+    lines.append('Use **!gold** to perform more gold-specific lookups such as fractional and premium calculations. !help gold for more information.')
+    lines.append(f"{SUB_TEXT}")
+    await ctx.send("\n".join(lines))
 
 @bot.command(name='gold', help='!gold gets spot price. !gold .5 would tell you the spot price for a half oz.  !gold 1350 .5 would calculate how much over/under that price is for .5oz. You can also specify a currency as the last parameter of any of these commands, e.g. !gold CAD,   !gold .5 CAD    or  !gold 2000 .5 CAD')
 async def gold(ctx, 
